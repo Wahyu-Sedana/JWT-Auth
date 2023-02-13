@@ -4,10 +4,12 @@ const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const { AUTH_CONF } = process.env;
 
-// const response = {
-//   message: false,
-//   data: []
-// }
+const responseBody = {
+  success: false,
+  message: 'paramater tidak valid',
+  data: [],
+  token: 'tidak ada'
+}
 
 const registerUser = async (req, res) => {
   let { name, email, password, role } = req.body
@@ -18,26 +20,21 @@ const registerUser = async (req, res) => {
     if(checkData){
       if(Object.keys(checkData).length > 0){
         console.log('email sudah terdaftar');
-        res.status(200).json({
-          message: false,
-          data: "email sudah terdaftar"
-        })
+        responseBody.success = true
+        responseBody.message = 'email sudah terdaftar'
       }
     }else {
       let data = await db.query("INSERT INTO users(name, email, password, role) VALUES(:name, :email, :password, :role)", { name, email, password:pass, role })
       console.log(data);
-      res.status(200).json({
-        message: true,
-        data: "berhasil registrasi!"
-      })
+      responseBody.success = true
+      responseBody.message = 'berhasil registrasi'
     }
   } catch (error) {
     console.log(error);
-    res.status(400).json({
-      message: false,
-      error: error
-    })
+    responseBody.success = false
+    responseBody.message = error
   }
+  return res.json(responseBody)
 }
 
 const loginUser = async (req, res) => {
@@ -46,7 +43,29 @@ const loginUser = async (req, res) => {
     let pass = crypto.createHash('md5').update(password).digest('hex')
     let data = await db.query('SELECT * FROM users WHERE email= :email AND password= :password', { email, password: pass })
     console.log(data);
-    const token = jwt.sign({ udata: data }, AUTH_CONF, { expiresIn: '24h' })
+    const token = jwt.sign({ userId: data.user_id }, AUTH_CONF, { expiresIn: '24h' })
+    if(Object.keys(data).length === 0){
+      responseBody.success = true
+      responseBody.message = 'belum mempunyai akun, silahkan registrasi terlebih dahulu'
+    }else {
+      responseBody.success = true
+      responseBody.message = 'berhasil login'
+      responseBody.data = data
+      responseBody.token = token
+    }
+  } catch (error) {
+    responseBody.success = false
+    responseBody.message = error
+  }
+  return res.json(responseBody)
+}
+
+const profiles = async (req, res) => {
+  let { email } = req.body
+  try {
+    let data = await db.query('SELECT email FROM users WHERE email= :email', { email })
+    console.log(data);
+    const token = jwt.sign({ userId: data.user_id }, AUTH_CONF, { expiresIn: '24h' })
     res.status(200).json({
       message: true,
       data: data,
@@ -60,4 +79,4 @@ const loginUser = async (req, res) => {
   }
 }
 
-module.exports = { registerUser, loginUser }
+module.exports = { registerUser, loginUser, profiles }

@@ -4,7 +4,8 @@ const router = express.Router()
 const users = require('../controllers/user')
 const authJWT = require('../middlewares/auth')
 
-router.get('/users', [authJWT.verifyToken], users.loginUser)
+router.get('/users', users.loginUser)
+router.get('/profiles', [authJWT.verifyToken], users.profiles)
 router.post('/register', users.registerUser)
 
 module.exports = router
